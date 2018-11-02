@@ -753,6 +753,29 @@
             setTimeout(function () { if (!oSipSessionCall) txtCallStatus.innerHTML = ''; }, 2500);
         }
 
+        function registerUsingTwilio(){
+
+            oSipStack = new SIPml.Stack({
+                    realm: 'subham.sip.us1.twilio.com',
+                    impi: 'subham',
+                    impu: 'sip:subham@subham.sip.us1.twilio.com',
+                    password: 'Password0611',
+                    display_name: 'subham',
+                    ice_servers: (window.localStorage ? window.localStorage.getItem('org.doubango.expert.ice_servers') : null),
+                    //ice_servers:'stun.l.google.com:19302',
+                    enable_rtcweb_breaker: (window.localStorage ? window.localStorage.getItem('org.doubango.expert.enable_rtcweb_breaker') == "true" : false),
+                    events_listener: { events: '*', listener: onSipEventStack },
+                    sip_headers: [
+                            { name: 'User-Agent', value: 'IM-client/OMA1.0 sipML5-v1.2016.03.04' },
+                            { name: 'Organization', value: 'Doubango Telecom' }
+                    ]
+                }
+                );
+                if (oSipStack.start() != 0) {
+                    txtRegStatus.innerHTML = '<b>Failed to start the SIP stack</b>';
+                }
+
+        }
         // Callback function for SIP Stacks
         function onSipEventStack(e /*SIPml.Stack.Event*/) {
             tsk_utils_log_info('==stack event = ' + e.type);
@@ -795,8 +818,13 @@
                         uiVideoDisplayShowHide(false);
                         divCallOptions.style.opacity = 0;
 
+                       
+
                         txtCallStatus.innerHTML = '';
                         txtRegStatus.innerHTML = bFailure ? "<i>Disconnected: <b>" + e.description + "</b></i>" : "<i>Disconnected</i>";
+                         if(e.type == 'failed_to_start'){
+                            registerUsingTwilio();
+                        }
                         break;
                     }
 
