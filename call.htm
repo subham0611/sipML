@@ -18,7 +18,9 @@
     DEBUG VERSION: 'SIPml-api.js'
     RELEASE VERSION: 'release/SIPml-api.js'
     -->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/3.1.2/rollups/aes.js"></script>
     <script src="SIPml-api.js?svn=252" type="text/javascript"> </script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
 
     <!-- Styles -->
     <link href="./assets/css/bootstrap.css" rel="stylesheet" />
@@ -376,12 +378,41 @@
                 // update debug level to be sure new values will be used if the user haven't updated the page
                 SIPml.setDebugLevel((window.localStorage && window.localStorage.getItem('org.doubango.expert.disable_debug') == "true") ? "error" : "info");
 
-                // create SIP stack
-                oSipStack = new SIPml.Stack({
+
+                function generateRandomString(){
+                    const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+                    const string_length = 16;
+                    let random_string = "";
+
+                    for(let i = 0; i < string_length; ++i) {
+                        let rnum = Math.floor(Math.random() * 
+                                   chars.length);
+                        random_string += chars.substring(rnum, rnum + 1);
+                    }
+
+                    random_string = CryptoJS.MD5("sipML5").toString();
+                    return random_string;
+                }
+
+                let random_key = generateRandomString();
+                console.log("#########Random Key = " + random_key);
+
+                axios.post('http://127.0.0.1:8080',{
+                        key: 'sipML5',
+                })
+                .then(function (response) {
+                    console.log("PAssword" + (response["data"]));
+
+                    var decryptedBytes = CryptoJS.AES.decrypt(response["data"], random_key);
+                    var plaintext = decryptedBytes.toString(CryptoJS.enc.Utf8);
+                    console.log("#### Plain text = " + plaintext);
+
+                    // create SIP stack
+                    oSipStack = new SIPml.Stack({
                     realm: txtRealm.value,
                     impi: txtPrivateIdentity.value,
                     impu: txtPublicIdentity.value,
-                    password: txtPassword.value,
+                    password: plaintext,
                     display_name: txtDisplayName.value,
                     websocket_proxy_url: (window.localStorage ? window.localStorage.getItem('org.doubango.expert.websocket_server_url') : null),
                     outbound_proxy_url: (window.localStorage ? window.localStorage.getItem('org.doubango.expert.sip_outboundproxy_url') : null),
@@ -398,10 +429,15 @@
                     ]
                 }
                 );
-                if (oSipStack.start() != 0) {
+                    if (oSipStack.start() != 0) {
                     txtRegStatus.innerHTML = '<b>Failed to start the SIP stack</b>';
-                }
-                else return;
+                }else return;
+                }).catch(function (error) {
+                    // handle error
+                    console.log(error);
+                });
+                
+                
             }
             catch (e) {
                 txtRegStatus.innerHTML = "<b>2:" + e + "</b>";
@@ -753,13 +789,44 @@
             setTimeout(function () { if (!oSipSessionCall) txtCallStatus.innerHTML = ''; }, 2500);
         }
 
+        function getPassword(){
+            axios.get('http://127.0.0.1:8080')
+            .then(function (response) {
+            // handle success
+                console.log("PAssword" + response);
+            })
+            .catch(function (error) {
+            // handle error
+            console.log(error);
+            });
+            /*var oReq = new XMLHttpRequest();
+            oReq.open("GET", "http://127.0.0.1:8080");
+            oReq.send();
+
+            oReq.onreadystatechange = function() {
+            if (oReq.readyState === 4) {
+                console.log(oReq.response);
+            }
+  }*/
+        }
         function registerUsingTwilio(){
 
+            //getPassword();
+            axios.get('http://127.0.0.1:8080')
+            .then(function (response) {
+                console.log("PAssword" + (response["data"]));
+            
+            
+            var decryptedBytes = 
+        CryptoJS.AES.decrypt(response["data"], "secret key 123");
+            var plaintext = decryptedBytes.toString(CryptoJS.enc.Utf8);
+            console.log("#### Plain text = " + plaintext);
             oSipStack = new SIPml.Stack({
                     realm: 'subham.sip.us1.twilio.com',
                     impi: 'subham',
                     impu: 'sip:subham@subham.sip.us1.twilio.com',
-                    password: 'Password0611',
+                    //password: 'Password0611',
+                    password: plaintext,
                     display_name: 'subham',
                     ice_servers: (window.localStorage ? window.localStorage.getItem('org.doubango.expert.ice_servers') : null),
                     //ice_servers:'stun.l.google.com:19302',
@@ -774,6 +841,10 @@
                 if (oSipStack.start() != 0) {
                     txtRegStatus.innerHTML = '<b>Failed to start the SIP stack</b>';
                 }
+            }).catch(function (error) {
+            // handle error
+            console.log(error);
+            });
 
         }
         // Callback function for SIP Stacks
